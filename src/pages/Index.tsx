@@ -27,15 +27,34 @@ const Index = () => {
     }
 
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setResult(
-        "This is a placeholder for the tailored resume content that would be returned from the backend API."
-      );
+
+    try {
+      const formData = new FormData();
+      formData.append('githubLink', githubLink);
+      formData.append('linkedinLink', linkedinLink);
+      if (resume) {
+        formData.append('resume', resume);
+      }
+      formData.append('jobDescription', jobDescription);
+
+      const response = await fetch('http://localhost:3001/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send data to server');
+      }
+
+      const data = await response.json();
+      setResult(data.message || "Data successfully sent to server!");
+      toast.success("Data successfully sent to server!");
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("Failed to send data to server");
+    } finally {
       setIsLoading(false);
-      toast.success("Resume has been tailored successfully!");
-    }, 2000);
+    }
   };
 
   return (
