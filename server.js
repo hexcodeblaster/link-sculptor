@@ -1,4 +1,3 @@
-
 import express from 'express';
 import multer from 'multer';
 import cors from 'cors';
@@ -51,13 +50,14 @@ app.post('/upload', upload.fields([
   res.json({ message: 'Data received and logged successfully!' });
 });
 
-// Add chat endpoint
+// Text chat endpoint
 app.post('/chat', (req, res) => {
   const { message } = req.body;
 
   // Log chat message
   const logData = {
     timestamp: new Date().toISOString(),
+    type: 'text',
     message,
   };
 
@@ -67,8 +67,29 @@ app.post('/chat', (req, res) => {
     'utf8'
   );
 
-  // Send a simple response (you can enhance this with actual chatbot logic)
   res.json({ message: `I received your message: "${message}". This is a demo response.` });
+});
+
+// Audio chat endpoint
+app.post('/chat/audio', upload.single('audio'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No audio file provided' });
+  }
+
+  // Log audio message
+  const logData = {
+    timestamp: new Date().toISOString(),
+    type: 'audio',
+    filename: req.file.filename,
+  };
+
+  fs.appendFileSync(
+    path.join('logs', 'chat.log'),
+    JSON.stringify(logData, null, 2) + '\n---\n',
+    'utf8'
+  );
+
+  res.json({ message: "I received your voice message. This is a demo response." });
 });
 
 const PORT = 3001;
