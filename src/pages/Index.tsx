@@ -9,7 +9,7 @@ import ResultDisplay from "../components/ResultDisplay";
 import ChatBox from "../components/ChatBox";
 
 const Index = () => {
-  const [githubLink, setGithubLink] = useState("");
+  const [githubUsername, setGithubUsername] = useState("");
   const [linkedinLink, setLinkedinLink] = useState("");
   const [resume, setResume] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState<File | null>(null);
@@ -17,8 +17,8 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!githubLink || !linkedinLink) {
-      toast.error("Please provide both GitHub and LinkedIn links");
+    if (!githubUsername || !linkedinLink) {
+      toast.error("Please provide both GitHub username and LinkedIn link");
       return;
     }
 
@@ -31,7 +31,7 @@ const Index = () => {
 
     try {
       const formData = new FormData();
-      formData.append('githubLink', githubLink);
+      formData.append('githubLink', `https://github.com/${githubUsername}`);
       formData.append('linkedinLink', linkedinLink);
       if (resume) {
         formData.append('resume', resume);
@@ -67,10 +67,11 @@ const Index = () => {
         
         <div className="space-y-6">
           <SocialLinkInput
-            label="GitHub Profile"
-            value={githubLink}
-            onChange={setGithubLink}
-            placeholder="https://github.com/username"
+            label="GitHub Username"
+            value={githubUsername}
+            onChange={setGithubUsername}
+            placeholder="username"
+            isGithub={true}
           />
           
           <SocialLinkInput
