@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Mic, MicOff, Send, Play, Pause, Square } from 'lucide-react';
 import { Button } from './ui/button';
@@ -103,14 +102,9 @@ const ChatBox = () => {
             throw new Error('Failed to send audio');
           }
 
-          const data = await response.json();
-          
-          // Create a URL for the response audio using the content-type from the response
-          // If no content-type is specified, fallback to audio/mpeg
-          const contentType = data.contentType || 'audio/mpeg';
-          const audioUrl = URL.createObjectURL(
-            new Blob([data.audioResponse], { type: contentType })
-          );
+          // Handle binary audio response
+          const audioBlob = await response.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
           
           // Create new audio element
           const audio = new Audio(audioUrl);
