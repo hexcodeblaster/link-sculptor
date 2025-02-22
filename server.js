@@ -4,21 +4,11 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { Server } from 'socket.io';
-import http from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
-
 const upload = multer({ dest: 'uploads/' });
 app.use(cors());
 app.use(express.json());
@@ -81,38 +71,32 @@ app.post('/chat', (req, res) => {
   res.json({ message: `I received your message: "${message}". This is a demo response.` });
 });
 
-// WebSocket handling for real-time audio
-io.on('connection', (socket) => {
-  console.log('Client connected');
+// Audio chat endpoint
+app.post('/chat/audio', upload.single('audio'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No audio file received' });
+  }
 
-  socket.on('audio-stream', (audioChunk) => {
-    // Process the audio chunk
-    // For demo, we'll just echo back a response immediately
-    const response = `Processing chunk received at ${new Date().toISOString()}`;
-    
-    // Log the stream chunk
-    const logData = {
-      timestamp: new Date().toISOString(),
-      type: 'audio-stream',
-      chunkSize: audioChunk.length
-    };
+  // Log the audio file receipt
+  const logData = {
+    timestamp: new Date().toISOString(),
+    type: 'audio',
+    filename: req.file.filename,
+    originalname: req.file.originalname,
+    size: req.file.size
+  };
 
-    fs.appendFileSync(
-      path.join('logs', 'chat.log'),
-      JSON.stringify(logData, null, 2) + '\n---\n',
-      'utf8'
-    );
+  fs.appendFileSync(
+    path.join('logs', 'chat.log'),
+    JSON.stringify(logData, null, 2) + '\n---\n',
+    'utf8'
+  );
 
-    // Send immediate response back to client
-    socket.emit('audio-response', response);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
-  });
+  // Send back a response
+  res.json({ message: 'Audio received and processed successfully!' });
 });
 
 const PORT = 3001;
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

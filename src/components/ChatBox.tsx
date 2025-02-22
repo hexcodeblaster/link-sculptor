@@ -4,7 +4,6 @@ import { MessageSquare, X, Mic, MicOff, Send } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { toast } from 'sonner';
-import { io } from 'socket.io-client';
 
 const ChatBox = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,27 +11,8 @@ const ChatBox = () => {
   const [messages, setMessages] = useState<{ text: string; sender: 'user' | 'bot'; type: 'text' | 'audio' }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const socketRef = useRef<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
-  useEffect(() => {
-    // Initialize socket connection
-    socketRef.current = io('http://localhost:3001');
-
-    socketRef.current.on('audio-response', (response: string) => {
-      setMessages(prev => [...prev, { text: response, sender: 'bot', type: 'text' }]);
-    });
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
 
   const handleTextSend = async () => {
     if (!message.trim()) return;
@@ -73,19 +53,43 @@ const ChatBox = () => {
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
+      const chunks: BlobPart[] = [];
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0 && socketRef.current) {
-          // Send the audio chunk to the server
-          socketRef.current.emit('audio-stream', event.data);
+        if (event.data.size > 0) {
+          chunks.push(event.data);
         }
       };
 
-      // Set a shorter timeslice for more frequent chunks (e.g., every 100ms)
-      mediaRecorder.start(100);
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        
+        // Create form data to send the audio
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+
+        try {
+          const response = await fetch('http://localhost:3001/chat/audio', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to send audio');
+          }
+
+          const data = await response.json();
+          setMessages(prev => [...prev, { text: data.message, sender: 'bot', type: 'text' }]);
+        } catch (error) {
+          console.error('Error sending audio:', error);
+          toast.error('Failed to send audio message');
+        }
+      };
+
+      mediaRecorder.start();
       setIsRecording(true);
       
       setMessages(prev => [...prev, { 
-        text: '🎤 Started real-time audio streaming...', 
+        text: '🎤 Recording started...', 
         sender: 'user', 
         type: 'audio' 
       }]);
@@ -104,7 +108,7 @@ const ChatBox = () => {
     }
     setIsRecording(false);
     setMessages(prev => [...prev, { 
-      text: '🎤 Stopped audio streaming', 
+      text: '🎤 Recording stopped', 
       sender: 'user', 
       type: 'audio' 
     }]);
