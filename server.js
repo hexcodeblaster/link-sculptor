@@ -36,16 +36,19 @@ app.post('/chat/audio', upload.single('audio'), (req, res) => {
     return res.status(400).json({ error: 'No audio file received' });
   }
 
-  // Here you would typically process the audio file and generate a response
-  // For demo purposes, we'll just send back a sample audio file
-  // In a real application, you would process the audio and generate a response
-  
   try {
-    // Send back a dummy audio response (you should replace this with actual audio processing)
+    // Read the audio file
     const dummyAudioResponse = fs.readFileSync(req.file.path);
+    
+    // In a real implementation, you would:
+    // 1. Process the audio file
+    // 2. Generate a response in your desired format
+    // 3. Set the correct content type
+    
     res.json({ 
       message: 'Audio processed successfully',
-      audioResponse: dummyAudioResponse
+      audioResponse: dummyAudioResponse,
+      contentType: 'audio/webm' // Change this based on your actual response format
     });
   } catch (error) {
     console.error('Error processing audio:', error);

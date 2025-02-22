@@ -105,14 +105,21 @@ const ChatBox = () => {
 
           const data = await response.json();
           
-          // Create a URL for the response audio
+          // Create a URL for the response audio using the content-type from the response
+          // If no content-type is specified, fallback to audio/mpeg
+          const contentType = data.contentType || 'audio/mpeg';
           const audioUrl = URL.createObjectURL(
-            new Blob([data.audioResponse], { type: 'audio/mpeg' })
+            new Blob([data.audioResponse], { type: contentType })
           );
           
           // Create new audio element
           const audio = new Audio(audioUrl);
           audioRef.current = audio;
+          
+          // Add event listener to handle playback end
+          audio.addEventListener('ended', () => {
+            setIsPlaying(false);
+          });
           
           setMessages(prev => [...prev, { 
             text: 'Audio response received', 
