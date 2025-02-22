@@ -1,12 +1,110 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
+import FileUpload from "@/components/FileUpload";
+import SocialLinkInput from "@/components/SocialLinkInput";
+import ResultDisplay from "@/components/ResultDisplay";
 
 const Index = () => {
+  const [githubLink, setGithubLink] = useState("");
+  const [linkedinLink, setLinkedinLink] = useState("");
+  const [resume, setResume] = useState<File | null>(null);
+  const [jobDescription, setJobDescription] = useState<File | null>(null);
+  const [result, setResult] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!githubLink || !linkedinLink) {
+      toast.error("Please provide both GitHub and LinkedIn links");
+      return;
+    }
+
+    if (!jobDescription) {
+      toast.error("Please upload a job description");
+      return;
+    }
+
+    setIsLoading(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setResult(
+        "This is a placeholder for the tailored resume content that would be returned from the backend API."
+      );
+      setIsLoading(false);
+      toast.success("Resume has been tailored successfully!");
+    }, 2000);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen py-8 px-4 max-w-2xl mx-auto">
+      <Card className="p-6 glass-card">
+        <h1 className="text-2xl font-semibold text-center mb-6">
+          Resume Tailor
+        </h1>
+        
+        <div className="space-y-6">
+          <SocialLinkInput
+            label="GitHub Profile"
+            value={githubLink}
+            onChange={setGithubLink}
+            placeholder="https://github.com/username"
+          />
+          
+          <SocialLinkInput
+            label="LinkedIn Profile"
+            value={linkedinLink}
+            onChange={setLinkedinLink}
+            placeholder="https://linkedin.com/in/username"
+          />
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium mb-2">Current Resume (Optional)</p>
+            <FileUpload
+              onFileSelect={(file) => {
+                setResume(file);
+                toast.success("Resume uploaded successfully");
+              }}
+              accept={{ "application/pdf": [".pdf"] }}
+              label="Upload your current resume (PDF)"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium mb-2">Job Description</p>
+            <FileUpload
+              onFileSelect={(file) => {
+                setJobDescription(file);
+                toast.success("Job description uploaded successfully");
+              }}
+              accept={{
+                "application/pdf": [".pdf"],
+                "text/plain": [".txt"],
+              }}
+              label="Upload the job description (PDF or TXT)"
+            />
+          </div>
+
+          <Button
+            onClick={handleSubmit}
+            className="w-full"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+                <span>Processing...</span>
+              </div>
+            ) : (
+              "Generate Tailored Resume"
+            )}
+          </Button>
+        </div>
+      </Card>
+
+      {result && <ResultDisplay content={result} />}
     </div>
   );
 };
