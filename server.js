@@ -1,3 +1,4 @@
+
 import express from 'express';
 import multer from 'multer';
 import cors from 'cors';
@@ -23,51 +24,9 @@ if (!fs.existsSync('logs')) {
   fs.mkdirSync('logs');
 }
 
-// Regular file upload endpoints
-app.post('/upload', upload.fields([
-  { name: 'resume', maxCount: 1 },
-  { name: 'jobDescription', maxCount: 1 }
-]), (req, res) => {
-  const { githubLink, linkedinLink } = req.body;
-  const resume = req.files['resume'] ? req.files['resume'][0] : null;
-  const jobDescription = req.files['jobDescription'][0];
-
-  // Log the data
-  const logData = {
-    timestamp: new Date().toISOString(),
-    githubLink,
-    linkedinLink,
-    resumePath: resume ? resume.path : 'No resume uploaded',
-    jobDescriptionPath: jobDescription.path
-  };
-
-  // Write to log file
-  fs.appendFileSync(
-    path.join('logs', 'uploads.log'),
-    JSON.stringify(logData, null, 2) + '\n---\n',
-    'utf8'
-  );
-
-  res.json({ message: 'Data received and logged successfully!' });
-});
-
-// Text chat endpoint
+// Regular chat endpoint
 app.post('/chat', (req, res) => {
   const { message } = req.body;
-
-  // Log chat message
-  const logData = {
-    timestamp: new Date().toISOString(),
-    type: 'text',
-    message,
-  };
-
-  fs.appendFileSync(
-    path.join('logs', 'chat.log'),
-    JSON.stringify(logData, null, 2) + '\n---\n',
-    'utf8'
-  );
-
   res.json({ message: `I received your message: "${message}". This is a demo response.` });
 });
 
@@ -77,23 +36,28 @@ app.post('/chat/audio', upload.single('audio'), (req, res) => {
     return res.status(400).json({ error: 'No audio file received' });
   }
 
-  // Log the audio file receipt
-  const logData = {
-    timestamp: new Date().toISOString(),
-    type: 'audio',
-    filename: req.file.filename,
-    originalname: req.file.originalname,
-    size: req.file.size
-  };
-
-  fs.appendFileSync(
-    path.join('logs', 'chat.log'),
-    JSON.stringify(logData, null, 2) + '\n---\n',
-    'utf8'
-  );
-
-  // Send back a response
-  res.json({ message: 'Audio received and processed successfully!' });
+  // Here you would typically process the audio file and generate a response
+  // For demo purposes, we'll just send back a sample audio file
+  // In a real application, you would process the audio and generate a response
+  
+  try {
+    // Send back a dummy audio response (you should replace this with actual audio processing)
+    const dummyAudioResponse = fs.readFileSync(req.file.path);
+    res.json({ 
+      message: 'Audio processed successfully',
+      audioResponse: dummyAudioResponse
+    });
+  } catch (error) {
+    console.error('Error processing audio:', error);
+    res.status(500).json({ error: 'Failed to process audio' });
+  } finally {
+    // Clean up the uploaded file
+    if (req.file) {
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error('Error deleting file:', err);
+      });
+    }
+  }
 });
 
 const PORT = 3001;

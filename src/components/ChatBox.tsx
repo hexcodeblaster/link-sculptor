@@ -1,18 +1,37 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Mic, MicOff, Send } from 'lucide-react';
+import { MessageSquare, X, Mic, MicOff, Send, Play, Pause, Square } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { toast } from 'sonner';
 
+interface AudioMessage {
+  text: string;
+  sender: 'user' | 'bot';
+  type: 'text' | 'audio';
+  audioUrl?: string;
+}
+
 const ChatBox = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<{ text: string; sender: 'user' | 'bot'; type: 'text' | 'audio' }[]>([]);
+  const [messages, setMessages] = useState<AudioMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Cleanup function
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   const handleTextSend = async () => {
     if (!message.trim()) return;
@@ -47,6 +66,13 @@ const ChatBox = () => {
 
   const startRecording = async () => {
     try {
+      // Stop and clear any existing audio playback
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      setIsPlaying(false);
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
@@ -78,7 +104,22 @@ const ChatBox = () => {
           }
 
           const data = await response.json();
-          setMessages(prev => [...prev, { text: data.message, sender: 'bot', type: 'text' }]);
+          
+          // Create a URL for the response audio
+          const audioUrl = URL.createObjectURL(
+            new Blob([data.audioResponse], { type: 'audio/mpeg' })
+          );
+          
+          // Create new audio element
+          const audio = new Audio(audioUrl);
+          audioRef.current = audio;
+          
+          setMessages(prev => [...prev, { 
+            text: 'Audio response received', 
+            sender: 'bot', 
+            type: 'audio',
+            audioUrl 
+          }]);
         } catch (error) {
           console.error('Error sending audio:', error);
           toast.error('Failed to send audio message');
@@ -112,6 +153,25 @@ const ChatBox = () => {
       sender: 'user', 
       type: 'audio' 
     }]);
+  };
+
+  const toggleAudioPlayback = () => {
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const stopAudioPlayback = () => {
+    if (!audioRef.current) return;
+    
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+    setIsPlaying(false);
   };
 
   return (
@@ -153,6 +213,30 @@ const ChatBox = () => {
                   }`}
                 >
                   {msg.text}
+                  {msg.type === 'audio' && msg.audioUrl && msg.sender === 'bot' && (
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={toggleAudioPlayback}
+                        className="h-8 w-8"
+                      >
+                        {isPlaying ? (
+                          <Pause className="h-4 w-4" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={stopAudioPlayback}
+                        className="h-8 w-8"
+                      >
+                        <Square className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
