@@ -1,18 +1,41 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { MessageSquare, X, Mic, MicOff, Send } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { toast } from 'sonner';
+import { useConversation } from '@11labs/react';
 
 const ChatBox = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<{ text: string; sender: 'user' | 'bot'; type: 'text' | 'audio' }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  
+  // Initialize ElevenLabs conversation
+  const conversation = useConversation({
+    onMessage: (message) => {
+      if (message.type === 'final_transcript') {
+        // Handle user's speech transcription
+        setMessages(prev => [...prev, { 
+          text: message.text, 
+          sender: 'user', 
+          type: 'text' 
+        }]);
+      } else if (message.type === 'llm_response') {
+        // Handle AI's response
+        setMessages(prev => [...prev, { 
+          text: message.text, 
+          sender: 'bot', 
+          type: 'text' 
+        }]);
+      }
+    },
+    onError: (error) => {
+      console.error('Conversation error:', error);
+      toast.error('Error in conversation');
+    }
+  });
 
   const handleTextSend = async () => {
     if (!message.trim()) return;
@@ -45,73 +68,31 @@ const ChatBox = () => {
     }
   };
 
-  const startRecording = async () => {
+  const startConversation = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      // Request microphone access first
+      await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-
-      const chunks: BlobPart[] = [];
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        
-        // Create form data to send the audio
-        const formData = new FormData();
-        formData.append('audio', audioBlob, 'recording.webm');
-
-        try {
-          const response = await fetch('http://localhost:3001/chat/audio', {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to send audio');
-          }
-
-          const data = await response.json();
-          setMessages(prev => [...prev, { text: data.message, sender: 'bot', type: 'text' }]);
-        } catch (error) {
-          console.error('Error sending audio:', error);
-          toast.error('Failed to send audio message');
-        }
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
+      // Start the conversation with ElevenLabs
+      await conversation.startSession({
+        agentId: 'YOUR_AGENT_ID_HERE', // Replace with your actual agent ID
+      });
       
-      setMessages(prev => [...prev, { 
-        text: '🎤 Recording started...', 
-        sender: 'user', 
-        type: 'audio' 
-      }]);
+      toast.success('Connected to voice chat');
     } catch (error) {
-      console.error('Error accessing microphone:', error);
-      toast.error('Failed to access microphone');
+      console.error('Error starting conversation:', error);
+      toast.error('Failed to start voice chat');
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
+  const stopConversation = async () => {
+    try {
+      await conversation.endSession();
+      toast.success('Voice chat ended');
+    } catch (error) {
+      console.error('Error ending conversation:', error);
+      toast.error('Failed to end voice chat');
     }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    setIsRecording(false);
-    setMessages(prev => [...prev, { 
-      text: '🎤 Recording stopped', 
-      sender: 'user', 
-      type: 'audio' 
-    }]);
   };
 
   return (
@@ -174,18 +155,22 @@ const ChatBox = () => {
               />
               <Button
                 onClick={handleTextSend}
-                disabled={isLoading || isRecording}
+                disabled={isLoading || conversation.status === 'connected'}
                 className="min-w-[40px]"
               >
                 <Send className="h-4 w-4" />
               </Button>
               <Button
-                onClick={isRecording ? stopRecording : startRecording}
+                onClick={
+                  conversation.status === 'connected' 
+                    ? stopConversation 
+                    : startConversation
+                }
                 disabled={isLoading}
-                variant={isRecording ? 'destructive' : 'default'}
+                variant={conversation.status === 'connected' ? 'destructive' : 'default'}
                 className="min-w-[40px]"
               >
-                {isRecording ? (
+                {conversation.status === 'connected' ? (
                   <MicOff className="h-4 w-4" />
                 ) : (
                   <Mic className="h-4 w-4" />
