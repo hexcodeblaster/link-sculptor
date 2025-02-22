@@ -1,11 +1,11 @@
 
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
 import { toast } from "sonner";
-import FileUpload from "@/components/FileUpload";
-import SocialLinkInput from "@/components/SocialLinkInput";
-import ResultDisplay from "@/components/ResultDisplay";
+import FileUpload from "../components/FileUpload";
+import SocialLinkInput from "../components/SocialLinkInput";
+import ResultDisplay from "../components/ResultDisplay";
 
 const Index = () => {
   const [githubLink, setGithubLink] = useState("");
