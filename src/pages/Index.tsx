@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import FileUpload from "../components/FileUpload";
 import SocialLinkInput from "../components/SocialLinkInput";
 import ResultDisplay from "../components/ResultDisplay";
+import ChatBox from "../components/ChatBox";
 
 const Index = () => {
   const [githubLink, setGithubLink] = useState("");
@@ -124,6 +125,7 @@ const Index = () => {
       </Card>
 
       {result && <ResultDisplay content={result} />}
+      <ChatBox />
     </div>
   );
 };

@@ -8,6 +8,7 @@ const path = require('path');
 const app = express();
 const upload = multer({ dest: 'uploads/' });
 app.use(cors());
+app.use(express.json());
 
 // Ensure uploads directory exists
 if (!fs.existsSync('uploads')) {
@@ -44,6 +45,26 @@ app.post('/upload', upload.fields([
   );
 
   res.json({ message: 'Data received and logged successfully!' });
+});
+
+// Add chat endpoint
+app.post('/chat', (req, res) => {
+  const { message } = req.body;
+
+  // Log chat message
+  const logData = {
+    timestamp: new Date().toISOString(),
+    message,
+  };
+
+  fs.appendFileSync(
+    path.join('logs', 'chat.log'),
+    JSON.stringify(logData, null, 2) + '\n---\n',
+    'utf8'
+  );
+
+  // Send a simple response (you can enhance this with actual chatbot logic)
+  res.json({ message: `I received your message: "${message}". This is a demo response.` });
 });
 
 const PORT = 3001;
