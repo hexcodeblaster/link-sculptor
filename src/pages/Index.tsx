@@ -31,7 +31,7 @@ const Index = () => {
 
     try {
       const formData = new FormData();
-      formData.append('githubLink', `https://github.com/${githubUsername}`);
+      formData.append('githubLink', githubUsername); // Changed: now sending just the username
       formData.append('linkedinLink', linkedinLink);
       if (resume) {
         formData.append('resume', resume);
