@@ -52,7 +52,7 @@ const ChatBox = () => {
           <MessageSquare className="w-6 h-6" />
         </Button>
       ) : (
-        <Card className="w-80 h-[400px] flex flex-col">
+        <Card className="w-80 h-[400px] flex flex-col absolute bottom-0 left-0">
           <div className="p-4 border-b flex justify-between items-center">
             <h3 className="font-semibold">Chat Assistant</h3>
             <Button
