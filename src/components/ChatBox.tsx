@@ -1,25 +1,38 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Mic, MicOff, Send } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { toast } from 'sonner';
-import { useReactMediaRecorder } from 'react-media-recorder';
+import { io } from 'socket.io-client';
 
 const ChatBox = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<{ text: string; sender: 'user' | 'bot'; type: 'text' | 'audio' }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const socketRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  const { status, startRecording, stopRecording, mediaBlobUrl } = useReactMediaRecorder({
-    audio: true,
-    onStop: async (blobUrl, blob) => {
-      if (blob) {
-        await handleAudioSend(blob);
+  useEffect(() => {
+    // Initialize socket connection
+    socketRef.current = io('http://localhost:3001');
+
+    socketRef.current.on('audio-response', (response: string) => {
+      setMessages(prev => [...prev, { text: response, sender: 'bot', type: 'text' }]);
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
       }
-    }
-  });
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   const handleTextSend = async () => {
     if (!message.trim()) return;
@@ -52,33 +65,49 @@ const ChatBox = () => {
     }
   };
 
-  const handleAudioSend = async (audioBlob: Blob) => {
-    setIsLoading(true);
-    const formData = new FormData();
-    formData.append('audio', audioBlob, 'recording.wav');
-
+  const startRecording = async () => {
     try {
-      const response = await fetch('http://localhost:3001/chat/audio', {
-        method: 'POST',
-        body: formData,
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
 
-      if (!response.ok) {
-        throw new Error('Failed to send audio message');
-      }
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0 && socketRef.current) {
+          // Send the audio chunk to the server
+          socketRef.current.emit('audio-stream', event.data);
+        }
+      };
 
-      const data = await response.json();
-      setMessages(prev => [
-        ...prev,
-        { text: '🎤 Audio message sent', sender: 'user', type: 'audio' },
-        { text: data.message, sender: 'bot', type: 'text' }
-      ]);
+      // Set a shorter timeslice for more frequent chunks (e.g., every 100ms)
+      mediaRecorder.start(100);
+      setIsRecording(true);
+      
+      setMessages(prev => [...prev, { 
+        text: '🎤 Started real-time audio streaming...', 
+        sender: 'user', 
+        type: 'audio' 
+      }]);
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Failed to send audio message');
-    } finally {
-      setIsLoading(false);
+      console.error('Error accessing microphone:', error);
+      toast.error('Failed to access microphone');
     }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    setIsRecording(false);
+    setMessages(prev => [...prev, { 
+      text: '🎤 Stopped audio streaming', 
+      sender: 'user', 
+      type: 'audio' 
+    }]);
   };
 
   return (
@@ -141,24 +170,18 @@ const ChatBox = () => {
               />
               <Button
                 onClick={handleTextSend}
-                disabled={isLoading || status === 'recording'}
+                disabled={isLoading || isRecording}
                 className="min-w-[40px]"
               >
                 <Send className="h-4 w-4" />
               </Button>
               <Button
-                onClick={() => {
-                  if (status === 'recording') {
-                    stopRecording();
-                  } else {
-                    startRecording();
-                  }
-                }}
+                onClick={isRecording ? stopRecording : startRecording}
                 disabled={isLoading}
-                variant={status === 'recording' ? 'destructive' : 'default'}
+                variant={isRecording ? 'destructive' : 'default'}
                 className="min-w-[40px]"
               >
-                {status === 'recording' ? (
+                {isRecording ? (
                   <MicOff className="h-4 w-4" />
                 ) : (
                   <Mic className="h-4 w-4" />
@@ -173,4 +196,3 @@ const ChatBox = () => {
 };
 
 export default ChatBox;
-
