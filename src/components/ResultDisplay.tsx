@@ -21,14 +21,14 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content }) => {
 
   const handleDownload = () => {
     try {
-      // Create a Blob with the CV content
-      const blob = new Blob([content], { type: 'application/pdf' });
+      // Create a Blob with the CV content as text
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
       const url = window.URL.createObjectURL(blob);
       
       // Create a temporary link element
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'tailored-resume.pdf');
+      link.setAttribute('download', 'tailored-resume.txt');
       
       // Append link to body, click it, and remove it
       document.body.appendChild(link);
@@ -57,7 +57,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content }) => {
           className="flex items-center gap-2"
         >
           <Download className="h-4 w-4" />
-          Download PDF
+          Download Text
         </Button>
       </div>
       <Separator className="my-4" />
